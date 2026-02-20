@@ -7,5 +7,25 @@
   "auto_flush_interval": 10,
   "graph_bfs_depth": 2,
   "recommend_top_k": 5,
-  "history_days": 30
+  "history_days": 30,
+  "custom_branches": [
+    {
+      "_comment": "Remove this entry or replace with your own branches",
+      "name":  "my-custom-branch",
+      "label": "🔧 My Custom Branch",
+      "nodes": [
+        {
+          "slug":         "my-first-skill",
+          "name":         "My First Skill",
+          "description":  "What this skill does in one sentence",
+          "tier":         1,
+          "status":       "available",
+          "evolveAt":     10,
+          "prerequisites": [],
+          "unlocks":      [],
+          "chainsWith":   []
+        }
+      ]
+    }
+  ]
 }

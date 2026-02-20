@@ -3,7 +3,10 @@ import { addXP, chainBonus, evolveCheck, findNode } from "./evolver";
 import { autoRecommend }       from "./recommender";
 import { renderASCIITree }     from "./renderer";
 import { Gardener }            from "../memory/gardener";
+import { mergeCustomBranches, addCustomBranch, removeCustomBranch, listCustomBranches } from "./branchLoader";
+import { loadConfig }          from "./configLoader";
 import type { TalentTree, TreeMode } from "./skillTree";
+import type { CustomBranchDef }      from "./configLoader";
 
 export class TreeManager {
   private tree:        TalentTree;
@@ -12,11 +15,16 @@ export class TreeManager {
 
   constructor(private baseDir: string) {
     this.tree     = loadTree(baseDir);
+    // Merge user-defined branches at boot
+    const added = mergeCustomBranches(this.tree, baseDir);
+    if (added > 0) console.log(`[CLAWTREE] 🌳 Loaded ${added} custom branch(es) from config`);
     this.gardener = new Gardener(baseDir);
     this.gardener.boot(this.tree);
   }
 
   getTree(): TalentTree { return this.tree; }
+
+  // ── Skill actions ────────────────────────────────────────────────────
 
   async installSkill(slug: string): Promise<void> {
     const node = findNode(this.tree, slug);
@@ -83,4 +91,31 @@ export class TreeManager {
   flush(): void { this.gardener.flush(this.tree); }
 
   getStats() { return this.gardener.getStats(this.baseDir); }
+
+  // ── Custom branch management ─────────────────────────────────────────────
+
+  /** Add a custom branch from a JSON definition. Returns validation errors or []. */
+  addBranch(def: CustomBranchDef): string[] {
+    const errors = addCustomBranch(this.tree, this.baseDir, def);
+    if (!errors.length) {
+      this.flush();
+      console.log(`[CLAWTREE] 🌱 Custom branch '${def.name}' added (${def.nodes.length} node(s))`);
+    }
+    return errors;
+  }
+
+  /** Remove a custom branch by name. */
+  removeBranch(name: string): { ok: boolean; reason?: string } {
+    const result = removeCustomBranch(this.tree, this.baseDir, name);
+    if (result.ok) {
+      this.flush();
+      console.log(`[CLAWTREE] 🗑️  Branch '${name}' removed`);
+    }
+    return result;
+  }
+
+  /** List all custom branches defined in config. */
+  listBranches(): CustomBranchDef[] {
+    return listCustomBranches(this.baseDir);
+  }
 }
