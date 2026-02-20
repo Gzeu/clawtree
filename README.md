@@ -29,6 +29,8 @@ Audit → Gap Analysis → Talent Tree → Knowledge Graph → Evolve
 /tree install <slug>        → install with XP tracking + auto-unlock
 /graph search "monitoring"  → semantic search (offline, no API key)
 /graph path <slug>          → shortest path to any skill (Dijkstra)
+/fleet sync                 → merge all agent trees into shared fleet tree
+/slots add * on_evolve flush_memory  → auto-flush on every evolution
 /remember                   → flush memory before context compaction
 ```
 
@@ -61,9 +63,16 @@ clawtree/
 ├── 🧠 Knowledge Graph     semantic search + Dijkstra pathfinding
 │   ├── Xenova/all-MiniLM   offline embeddings, 23 MB, no API key
 │   └── Mermaid renderer    flowchart auto-generated in reports/
-└── 💾 Gardener Memory     XP survives restarts via MEMORY.md
-    ├── Summary Layer       MEMORY.md — always loaded at session start
-    └── Detail Layer        memory/YYYY-MM-DD.md — lazy daily logs
+├── 💾 Gardener Memory     XP survives restarts via MEMORY.md
+│   ├── Summary Layer       MEMORY.md — always loaded at session start
+│   └── Detail Layer        memory/YYYY-MM-DD.md — lazy daily logs
+├── 🌍 Fleet Tree (V3)     multi-agent shared talent tree
+│   ├── fleetRegistry       register/list agents globally
+│   ├── sharedTree          ~/.clawtree/fleet-tree.json (max-wins merge)
+│   └── fleetSync           push/pull between personal and fleet
+└── 🔧 Conditional Slots (V3)  event-driven rule engine
+    ├── Triggers            on_use | on_install | on_evolve | on_chain | *
+    └── Actions             notify | auto_install | unlock_branch | flush | emit
 ```
 
 ---
@@ -81,13 +90,17 @@ skills/clawtree/
 │   ├── memory/     (4 files)    Gardener, SummaryIndex, DetailLayer, MemoryFlush
 │   ├── graph/      (6 files)    KnowledgeGraph, SemanticSearch, Pathfinder, Mermaid, Persistence, Enricher
 │   ├── safety/     (2 files)    PermissionsGate, InjectionHeuristics
-│   └── audit/      (1 file)     localClawhub (Inception Engine)
-├── tests/          (6 suites)   tree, pathfinder, safety, memory, recommender, integration
+│   ├── audit/      (1 file)     localClawhub (Inception Engine)
+│   ├── fleet/      (4 files)    FleetRegistry, SharedTree, FleetSync, GardenerAgent
+│   └── slots/      (3 files)    ConditionalSlots, SlotEngine, SlotPersistence
+├── tests/          (8 suites)   tree, pathfinder, safety, memory, recommender, integration, fleet, slots
 └── docs/
     ├── architecture.md          full system architecture
     ├── talent-tree.md           branch reference, XP rules, modes
     ├── knowledge-graph.md       edge types, semantic search, pathfinding
-    └── memory.md                Gardener two-layer memory system
+    ├── memory.md                Gardener two-layer memory system
+    ├── fleet.md                 Fleet Tree: multi-agent shared tree
+    └── slots.md                 Conditional Slots: event-driven rules
 ```
 
 ---
@@ -110,6 +123,16 @@ skills/clawtree/
 | `/remember` | Flush `MEMORY.md` manually |
 | `/gardener stats` | Usage stats + top skills + total XP |
 | `/gardener flush` | Force flush to `MEMORY.md` |
+| `/fleet status` | Show registered agents + fleet summary |
+| `/fleet sync` | Merge all agents into shared fleet tree |
+| `/fleet pull` | Upgrade personal tree from fleet |
+| `/fleet push` | Contribute personal tree to fleet |
+| `/fleet register <name> <path>` | Register an agent |
+| `/fleet list` | List all registered agents |
+| `/slots list` | List all conditional slots |
+| `/slots add <slug> <trigger> <action>` | Create a conditional slot |
+| `/slots remove <id>` | Remove a slot by ID |
+| `/slots fire <event> <slug>` | Manually test a slot trigger |
 
 ---
 
@@ -153,11 +176,13 @@ Your XP state is automatically restored at session start and saved before contex
 
 ## Docs
 
-- [`docs/architecture.md`](skills/clawtree/docs/architecture.md) — full system architecture with ASCII diagrams
-- [`docs/talent-tree.md`](skills/clawtree/docs/talent-tree.md) — branch reference, status values, XP rules, modes
-- [`docs/knowledge-graph.md`](skills/clawtree/docs/knowledge-graph.md) — graph model, edge types, semantic search, pathfinding
-- [`docs/memory.md`](skills/clawtree/docs/memory.md) — Gardener two-layer memory architecture
-- [`CHANGELOG.md`](CHANGELOG.md) — full v1.0.0 release notes
+- [`docs/architecture.md`](skills/clawtree/docs/architecture.md) — full system architecture
+- [`docs/talent-tree.md`](skills/clawtree/docs/talent-tree.md) — branch reference, XP rules, modes
+- [`docs/knowledge-graph.md`](skills/clawtree/docs/knowledge-graph.md) — graph model, edge types, semantic search
+- [`docs/memory.md`](skills/clawtree/docs/memory.md) — Gardener two-layer memory
+- [`docs/fleet.md`](skills/clawtree/docs/fleet.md) — Fleet Tree: multi-agent shared tree
+- [`docs/slots.md`](skills/clawtree/docs/slots.md) — Conditional Slots: event-driven rules
+- [`CHANGELOG.md`](CHANGELOG.md) — full release notes
 
 ---
 
@@ -165,7 +190,7 @@ Your XP state is automatically restored at session start and saved before contex
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Open a **New Branch Idea** issue to propose new skill branches.
 
-After your first contribution, we'll add you to the contributors list. ❤️
+After your first contribution, we’ll add you to the contributors list. ❤️
 
 ---
 
@@ -173,9 +198,10 @@ After your first contribution, we'll add you to the contributors list. ❤️
 
 - [x] V1 — Gardener Memory (XP survives restarts)
 - [x] V2 — Knowledge Graph (semantic search + Dijkstra + Mermaid)
-- [x] ClawHub publish automation via CI (`.github/workflows/clawhub-publish.yml`)
-- [ ] V3 — Fleet Tree (multi-agent shared tree + Web UI + conditional slots)
+- [x] V3 — Fleet Tree (multi-agent shared tree + Conditional Slots)
+- [x] ClawHub publish automation via CI
 - [ ] User-defined branches via `config.json`
+- [ ] Fleet Web UI (dashboard for multi-agent view)
 
 ---
 
