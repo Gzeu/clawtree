@@ -7,10 +7,13 @@
 Audit → Gap Analysis → Talent Tree → Knowledge Graph → Evolve
 
 [![clawhub install](https://img.shields.io/badge/clawhub-install%20clawtree-brightgreen?style=flat-square)](https://clawhub.com/skills/clawtree)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue?style=flat-square)](https://github.com/Gzeu/clawtree/releases/tag/v1.0.0)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
-[![OpenClaw Compatible](https://img.shields.io/badge/OpenClaw-compatible-blue?style=flat-square)](https://openclaw.ai)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)](CONTRIBUTING.md)
+[![OpenClaw Compatible](https://img.shields.io/badge/OpenClaw-compatible-blueviolet?style=flat-square)](https://openclaw.ai)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.3-3178c6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Node](https://img.shields.io/badge/Node-%3E%3D20-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![CI](https://github.com/Gzeu/clawtree/actions/workflows/ci.yml/badge.svg)](https://github.com/Gzeu/clawtree/actions/workflows/ci.yml)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)](CONTRIBUTING.md)
 
 </div>
 
@@ -18,15 +21,15 @@ Audit → Gap Analysis → Talent Tree → Knowledge Graph → Evolve
 
 ## What it does
 
-`clawtree` is a meta-skill for the OpenClaw ecosystem: it **manages, recommends, and evolves** your skill collection using a talent-tree model, a semantic knowledge graph, and a persistent Gardener memory layer.
+`clawtree` is a **meta-skill** for the OpenClaw ecosystem: it manages, recommends, and evolves your skill collection using a talent-tree model, a semantic knowledge graph, and a persistent Gardener memory layer that survives across agent restarts.
 
 ```
 /inception "web scraping"   → full audit + gap analysis + 3 install variants
 /tree show                  → ASCII talent tree with live XP bars
-/tree install <slug>        → install with XP tracking
-/graph search "monitoring"  → semantic search (offline embeddings)
+/tree install <slug>        → install with XP tracking + auto-unlock
+/graph search "monitoring"  → semantic search (offline, no API key)
 /graph path <slug>          → shortest path to any skill (Dijkstra)
-/remember                   → flush memory before compaction
+/remember                   → flush memory before context compaction
 ```
 
 ---
@@ -50,17 +53,41 @@ cp -r clawtree/skills/clawtree ~/path/to/your/openclaw/skills/
 
 ```
 clawtree/
-├── 🌱 Inception Engine    audit + gap + 3 variants automatically
+├── 🔍 Inception Engine    audit + gap + 3 variants automatically
 ├── 🌳 Talent Tree         DAG of skills with XP + auto-evolution
 │   ├── AUTO mode           agent recommends and installs at threshold
 │   ├── MANUAL mode         full user control
 │   └── HYBRID mode         auto-recommend, manual approve (default)
 ├── 🧠 Knowledge Graph     semantic search + Dijkstra pathfinding
-│   ├── Xenova/all-MiniLM   offline embeddings, 23 MB, no API key needed
+│   ├── Xenova/all-MiniLM   offline embeddings, 23 MB, no API key
 │   └── Mermaid renderer    flowchart auto-generated in reports/
 └── 💾 Gardener Memory     XP survives restarts via MEMORY.md
-    ├── Summary Layer       MEMORY.md — loaded at every session start
+    ├── Summary Layer       MEMORY.md — always loaded at session start
     └── Detail Layer        memory/YYYY-MM-DD.md — lazy daily logs
+```
+
+---
+
+## File structure
+
+```
+skills/clawtree/
+├── index.ts                     command router
+├── skill.json                   ClawHub manifest (triggers + lifecycle)
+├── SKILL.md                     OpenClaw manifest
+├── config.example.json          default config
+├── src/
+│   ├── tree/       (6 files)     SkillTree, Manager, Evolver, Recommender, Renderer, Persistence
+│   ├── memory/     (4 files)     Gardener, SummaryIndex, DetailLayer, MemoryFlush
+│   ├── graph/      (6 files)     KnowledgeGraph, SemanticSearch, Pathfinder, Mermaid, Persistence, Enricher
+│   ├── safety/     (2 files)     PermissionsGate, InjectionHeuristics
+│   └── audit/      (1 file)      localClawhub (Inception Engine)
+├── tests/          (6 suites)   tree, pathfinder, safety, memory, recommender, integration
+└── docs/
+    ├── architecture.md            full system architecture
+    ├── talent-tree.md             branch reference, XP rules, modes
+    ├── knowledge-graph.md         edge types, semantic search, pathfinding
+    └── memory.md                  Gardener two-layer memory system
 ```
 
 ---
@@ -75,14 +102,14 @@ clawtree/
 | `/tree install <slug>` | Install a skill with XP tracking |
 | `/tree mode auto\|manual\|hybrid` | Change management mode |
 | `/tree evolve <slug>` | Force evolution check |
-| `/graph show` | Mermaid flowchart → reports/skill-graph.md |
+| `/graph show` | Mermaid flowchart → `reports/skill-graph.md` |
 | `/graph search <query>` | Hybrid semantic + keyword search |
 | `/graph path <slug>` | Shortest path to a skill (Dijkstra) |
 | `/graph subgraph <slug>` | BFS depth-2 neighbourhood |
 | `/graph recommend <query>` | Semantic recommendations + path |
-| `/remember` | Flush MEMORY.md manually |
+| `/remember` | Flush `MEMORY.md` manually |
 | `/gardener stats` | Usage stats + top skills + total XP |
-| `/gardener flush` | Force flush to MEMORY.md |
+| `/gardener flush` | Force flush to `MEMORY.md` |
 
 ---
 
@@ -90,7 +117,7 @@ clawtree/
 
 | Branch | Skills | Unlocked by |
 |---|---|---|
-| 🌱 Foundation | inception-oracle → clawhub-cli → clawguard → skillscan → publisher | Always |
+| 🌱 Foundation | clawtree → clawhub-cli → clawguard → skillscan → publisher | Always |
 | 🌐 Web Intelligence | decodo → web-monitor → amadeus → web-oracle | `skill-clawhub` |
 | 🔗 Blockchain & Web3 | multiversx-wallet → nft-monitor → defi-tracker → on-chain-oracle | `skill-clawhub` |
 | 🛡️ Security & Trust | blocklist → prime-auditor → supply-chain → trust-oracle | `clawguard` |
@@ -101,11 +128,44 @@ clawtree/
 
 ---
 
+## Safety
+
+ClawTree's `PermissionsGate` checks every skill before install:
+- Skills requesting `shell + filesystem + network` simultaneously require **explicit user confirmation**
+- Unknown permission strings are **blocked by default**
+
+`InjectionHeuristics` scans all user queries and skill metadata for 10 prompt-injection patterns before executing any command.
+
+---
+
+## OpenClaw lifecycle hooks
+
+```json
+"lifecycle": {
+  "onSessionStart": "gardener.boot",
+  "onMemoryFlush":  "gardener.flush"
+}
+```
+
+Your XP state is automatically restored at session start and saved before context compaction. No manual `/remember` needed for normal operation.
+
+---
+
+## Docs
+
+- [`docs/architecture.md`](skills/clawtree/docs/architecture.md) — full system architecture with ASCII diagrams
+- [`docs/talent-tree.md`](skills/clawtree/docs/talent-tree.md) — branch reference, status values, XP rules, modes
+- [`docs/knowledge-graph.md`](skills/clawtree/docs/knowledge-graph.md) — graph model, edge types, semantic search, pathfinding
+- [`docs/memory.md`](skills/clawtree/docs/memory.md) — Gardener two-layer memory architecture
+- [`CHANGELOG.md`](CHANGELOG.md) — full v1.0.0 release notes
+
+---
+
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Open a **New Branch Idea** issue to propose new talent-tree branches.
+See [CONTRIBUTING.md](CONTRIBUTING.md). Open a **New Branch Idea** issue to propose new skill branches.
 
-After your first contribution, we’ll add you to the contributors list.
+After your first contribution, we’ll add you to the contributors list. ❤️
 
 ---
 
@@ -114,8 +174,8 @@ After your first contribution, we’ll add you to the contributors list.
 - [x] V1 — Gardener Memory (XP survives restarts)
 - [x] V2 — Knowledge Graph (semantic search + Dijkstra + Mermaid)
 - [ ] V3 — Fleet Tree (multi-agent shared tree + Web UI + conditional slots)
-- [ ] ClawHub publish automation via CI
 - [ ] User-defined branches via `config.json`
+- [ ] ClawHub publish automation via CI
 
 ---
 
