@@ -77,17 +77,17 @@ skills/clawtree/
 ├── SKILL.md                     OpenClaw manifest
 ├── config.example.json          default config
 ├── src/
-│   ├── tree/       (6 files)     SkillTree, Manager, Evolver, Recommender, Renderer, Persistence
-│   ├── memory/     (4 files)     Gardener, SummaryIndex, DetailLayer, MemoryFlush
-│   ├── graph/      (6 files)     KnowledgeGraph, SemanticSearch, Pathfinder, Mermaid, Persistence, Enricher
-│   ├── safety/     (2 files)     PermissionsGate, InjectionHeuristics
-│   └── audit/      (1 file)      localClawhub (Inception Engine)
+│   ├── tree/       (6 files)    SkillTree, Manager, Evolver, Recommender, Renderer, Persistence
+│   ├── memory/     (4 files)    Gardener, SummaryIndex, DetailLayer, MemoryFlush
+│   ├── graph/      (6 files)    KnowledgeGraph, SemanticSearch, Pathfinder, Mermaid, Persistence, Enricher
+│   ├── safety/     (2 files)    PermissionsGate, InjectionHeuristics
+│   └── audit/      (1 file)     localClawhub (Inception Engine)
 ├── tests/          (6 suites)   tree, pathfinder, safety, memory, recommender, integration
 └── docs/
-    ├── architecture.md            full system architecture
-    ├── talent-tree.md             branch reference, XP rules, modes
-    ├── knowledge-graph.md         edge types, semantic search, pathfinding
-    └── memory.md                  Gardener two-layer memory system
+    ├── architecture.md          full system architecture
+    ├── talent-tree.md           branch reference, XP rules, modes
+    ├── knowledge-graph.md       edge types, semantic search, pathfinding
+    └── memory.md                Gardener two-layer memory system
 ```
 
 ---
@@ -165,7 +165,7 @@ Your XP state is automatically restored at session start and saved before contex
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Open a **New Branch Idea** issue to propose new skill branches.
 
-After your first contribution, we’ll add you to the contributors list. ❤️
+After your first contribution, we'll add you to the contributors list. ❤️
 
 ---
 
@@ -173,9 +173,9 @@ After your first contribution, we’ll add you to the contributors list. ❤️
 
 - [x] V1 — Gardener Memory (XP survives restarts)
 - [x] V2 — Knowledge Graph (semantic search + Dijkstra + Mermaid)
+- [x] ClawHub publish automation via CI (`.github/workflows/clawhub-publish.yml`)
 - [ ] V3 — Fleet Tree (multi-agent shared tree + Web UI + conditional slots)
 - [ ] User-defined branches via `config.json`
-- [ ] ClawHub publish automation via CI
 
 ---
 
