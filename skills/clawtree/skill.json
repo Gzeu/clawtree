@@ -2,23 +2,48 @@
   "name": "ClawTree",
   "slug": "clawtree",
   "version": "1.0.0",
-  "description": "Talent tree + knowledge graph for OpenClaw skills — audit, gap analysis, semantic search, evolve.",
+  "description": "Talent tree + knowledge graph for OpenClaw skills \u2014 audit, gap analysis, semantic search, evolve.",
   "author": "Gzeu",
   "homepage": "https://github.com/Gzeu/clawtree",
   "license": "MIT",
   "permissions": ["filesystem", "network", "shell"],
   "entrypoint": "index.ts",
   "tags": [
-    "talent-tree",
-    "knowledge-graph",
-    "skill-management",
-    "semantic-search",
-    "meta-skill",
-    "openclaw",
-    "clawhub"
+    "talent-tree", "knowledge-graph", "skill-management",
+    "semantic-search", "meta-skill", "openclaw", "clawhub"
   ],
   "requires": {
     "node": ">=20.0.0",
     "bins": ["clawhub"]
+  },
+  "triggers": {
+    "keywords": [
+      "/inception", "/tree", "/graph",
+      "/remember", "/gardener",
+      "what skills", "which skill", "install skill",
+      "skill gap", "talent tree", "knowledge graph"
+    ],
+    "patterns": [
+      "/inception .+",
+      "/tree (show|recommend|install|evolve|mode)",
+      "/graph (show|search|path|subgraph|recommend)",
+      "/gardener (stats|flush)",
+      "/remember"
+    ]
+  },
+  "lifecycle": {
+    "onSessionStart": "gardener.boot",
+    "onMemoryFlush":  "gardener.flush"
+  },
+  "config": {
+    "mode":                  "hybrid",
+    "memory_flush_enabled":  true,
+    "semantic_search_model": "Xenova/all-MiniLM-L6-v2",
+    "xp_per_use":            10,
+    "chain_bonus_xp":        25,
+    "auto_flush_interval":   10,
+    "graph_bfs_depth":       2,
+    "recommend_top_k":       5,
+    "history_days":          30
   }
 }
