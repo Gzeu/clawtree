@@ -1,28 +1,19 @@
 ---
-name: New Talent Tree Branch
-about: Propose a new branch for the skill talent tree
-labels: talent-tree, enhancement
+name: New talent-tree branch idea
+about: Propose a new skill branch for the ClawTree talent tree
+labels: new-branch
 ---
 
-## Branch Name
+**Branch name & emoji**
+e.g. "🧪 Testing & QA"
 
-Proposed name and emoji (e.g. `🎮 Gaming Automation`)
+**Skills in the branch** (2–6 nodes, include slug + one-line description)
+- `slug-one` — what it does
+- `slug-two` — what it does
 
-## Skills in this Branch
+**Prerequisites** (which existing skill unlocks this branch?)
 
-List 2–6 skill nodes with:
-- `slug`: unique identifier
-- `name`: display name
-- `tier`: T1–T5
-- `description`: one sentence
-- `prerequisites`: slugs from existing nodes
-- `chainsWith`: compatible skill slugs
-- `evolveAt`: usage count required for evolution
+**chainsWith** (which existing skills does this synergise with?)
 
-## Real Use-Case
-
-Describe a concrete scenario where this branch would be used.
-
-## Unlock Condition
-
-Which existing skill must be installed to unlock this branch?
+**Real-world use case** (not theoretical)
+Describe a concrete scenario where this branch adds value.

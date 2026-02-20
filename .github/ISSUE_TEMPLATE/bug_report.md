@@ -1,28 +1,25 @@
 ---
-name: Bug Report
-about: Something isn't working as expected
+name: Bug report
+about: Something is broken
 labels: bug
 ---
 
-## Description
+**Describe the bug**
+A clear description of what went wrong.
 
-A clear description of what the bug is.
+**To reproduce**
+Steps to reproduce the behaviour.
 
-## Steps to Reproduce
-
-1. Run command `...`
-2. See error
-
-## Expected Behavior
-
+**Expected behaviour**
 What you expected to happen.
 
-## Actual Behavior
-
-What actually happened.
-
-## Environment
-
-- OpenClaw version:
-- Node.js version:
+**Environment**
 - OS:
+- Node version:
+- ClawTree version:
+- OpenClaw version:
+
+**Logs**
+```
+Paste relevant logs here
+```

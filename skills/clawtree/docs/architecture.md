@@ -1,46 +1,67 @@
-# Architecture
+# ClawTree — Architecture
 
 ## Overview
 
-ClawTree is a mono-repo skill with a layered architecture:
+ClawTree is a meta-skill for the OpenClaw ecosystem. It manages, recommends, and evolves your skill collection using a talent-tree model, a knowledge graph, and a persistent Gardener memory layer.
 
 ```
-Query
-  ↓
-[Safety Gate]         injectionHeuristics + permissionsGate
-  ↓
-[Inception Engine]    audit + gap analysis + 3 variants
-  ↓
-[Talent Tree]         DAG nodes, XP, evolution, AUTO/MANUAL/HYBRID
-  ↓
-[Knowledge Graph]     semantic search + Dijkstra + Mermaid
-  ↓
-[Gardener Memory]     MEMORY.md Summary + daily Detail Layer
-  ↓
-Output + flush
+User query
+    │
+    ▼
+[index.ts]  ── command router ─────────────────────────────▶ Safety Gate
+    │                                                  (injectionHeuristics
+    ├── /tree   ─▶ TreeManager ─▶ evolver / renderer     permissionsGate)
+    ├── /graph  ─▶ KnowledgeGraph ─▶ semanticSearch
+    │                           └─▶ Pathfinder (Dijkstra)
+    │                           └─▶ MermaidRenderer
+    └── /remember, /gardener ─▶ Gardener ─▶ MEMORY.md (Summary Layer)
+                                          └─▶ memory/YYYY-MM-DD.md (Detail Layer)
 ```
 
-## Module Map
+## Layers
 
-| Module | Path | Responsibility |
-|---|---|---|
-| Inception Engine | `src/audit/` + `src/gap/` + `src/propose/` | Discover, compare, generate skill variants |
-| Talent Tree | `src/tree/` | DAG nodes, XP tracking, evolution, rendering |
-| Knowledge Graph | `src/graph/` | Edges, semantic search, pathfinding, Mermaid |
-| Gardener Memory | `src/memory/` | Persist state across sessions via MEMORY.md |
-| Safety | `src/safety/` | Injection detection, permissions enforcement |
+### Talent Tree (`src/tree/`)
+- **skillTree.ts** — type definitions (`TalentTree`, `SkillNode`, `Branch`)
+- **treeManager.ts** — orchestrates use-tracking, evolution checks, mode handling
+- **evolver.ts** — checks if a node has reached 100% XP and triggers tier upgrade
+- **recommender.ts** — keyword-based (V1) and semantic-boosted (V2) suggestions
+- **renderer.ts** — ASCII art talent-tree renderer for `/tree show`
+- **persistence.ts** — read/write `talent-tree.json`
 
-## Data Flow: Session Start
+### Knowledge Graph (`src/graph/`)
+- **knowledgeGraph.ts** — DAG with typed, weighted edges; BFS subgraph extractor
+- **semanticSearch.ts** — offline embeddings via `Xenova/all-MiniLM-L6-v2` + cosine similarity
+- **pathfinder.ts** — Dijkstra shortest-path from installed skills to any target
+- **mermaidRenderer.ts** — programmatic Mermaid flowchart generation
+- **graphPersistence.ts** — save/load `skill-graph.json` (embeddings stripped)
+- **graphEnricher.ts** — adds cross-branch synergies and suggests edges
 
-1. `TreeManager` instantiated
-2. `Gardener.boot(tree)` → reads `MEMORY.md`
-3. Tree nodes restored with XP/status from Summary Layer
-4. Knowledge Graph loaded from `skill-graph.json` (or rebuilt)
-5. Embeddings loaded lazily on first `/graph search`
+### Gardener Memory (`src/memory/`)
+- **summaryIndex.ts** — MEMORY.md read/write (lean, always loaded at session start)
+- **detailLayer.ts** — `memory/YYYY-MM-DD.md` daily logs (lazy-loaded on demand)
+- **memoryFlush.ts** — `flushToMemory` + `restoreFromMemory` (OpenClaw lifecycle hooks)
+- **gardener.ts** — orchestrator: boot, logEvent, flush, enrichedRecommendations, stats
 
-## Data Flow: Session End / Compaction
+### Safety (`src/safety/`)
+- **permissionsGate.ts** — validates permission arrays; blocks high-risk combos
+- **injectionHeuristics.ts** — regex-based prompt-injection detector
 
-1. OpenClaw fires `onMemoryFlush` lifecycle event
-2. `memoryFlush.ts` writes all XP + status to `MEMORY.md`
-3. Daily log appended to `memory/YYYY-MM-DD.md`
-4. Graph saved to `skill-graph.json` (without embeddings)
+## OpenClaw Lifecycle Integration
+
+| Hook | ClawTree action |
+|---|---|
+| `onSessionStart` | `gardener.boot(tree)` — restores from MEMORY.md |
+| `onMemoryFlush` | `flushToMemory(tree, baseDir)` — writes before compaction |
+| `triggers.keywords` | Routes `/tree`, `/graph`, `/remember`, `/gardener` |
+
+## Data Flow on Restart
+
+```
+OpenClaw restarts
+  │
+  ▼ onSessionStart
+  │
+  ├─ MEMORY.md exists? ─▶ YES ─▶ restoreFromMemory(tree)
+  │                                  └─ XP, status, totalXP restored ✓
+  └───────────────────▶ NO  ─▶ default tree + initial flush
+```

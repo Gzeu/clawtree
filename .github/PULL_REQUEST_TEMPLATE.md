@@ -1,23 +1,19 @@
-## Description
+## What does this PR do?
 
-Brief description of what this PR does.
+<!-- Short description -->
 
-## Type of Change
+## Type of change
 
-- [ ] Bug fix (`fix/`)
-- [ ] New feature (`feat/`)
-- [ ] New talent tree branch
-- [ ] Documentation update (`docs/`)
-- [ ] Test addition (`test/`)
+- [ ] Bug fix
+- [ ] New feature
+- [ ] New talent-tree branch
+- [ ] Documentation
+- [ ] Refactor / chore
 
 ## Checklist
 
-- [ ] Tests pass (`npm test`)
-- [ ] Lint passes (`npm run lint`)
-- [ ] New skill nodes have `description`, `chainsWith`, `evolveAt`
-- [ ] CHANGELOG.md updated
-- [ ] No new dependencies added without discussion
-
-## Related Issue
-
-Closes #
+- [ ] Tests added / updated
+- [ ] `npm test` passes locally
+- [ ] `npm run build` passes
+- [ ] No new `any` types introduced without comment
+- [ ] CHANGELOG.md updated (for user-visible changes)

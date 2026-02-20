@@ -1,32 +1,45 @@
-# Knowledge Graph
+# ClawTree — Knowledge Graph Reference
 
-## Edge Types
+## Graph Model
 
-| Type | Direction | Weight | Meaning |
+Each skill is a **node**. Relations become **weighted directed edges**:
+
+| Edge type | Weight | Direction | Meaning |
 |---|---|---|---|
-| `prerequisite` | A → B | 1.0 | A must be installed before B |
-| `unlocks` | A → B | 0.8 | Installing A makes B available |
-| `chains` | A ↔ B | 0.6 | A + B = +25 XP bonus |
-| `synergy` | A ↔ B | 0.4 | A and B amplify each other |
-| `suggests` | A → B | 0.3 | Recommended to have both |
-| `conflicts` | A ↔ B | -1.0 | A and B cannot coexist |
+| `prerequisite` | 1.0 | A → B | A must be installed before B |
+| `unlocks` | 0.8 | A → B | Installing A makes B available |
+| `chains` | 0.6 | A ↔ B | A + B together = +25 XP bonus |
+| `synergy` | 0.4 | A ↔ B | Amplify each other’s capabilities |
+| `suggests` | 0.3 | A → B | Recommended to have together |
+| `conflicts` | -1.0 | A — B | Should not run simultaneously |
 
 ## Semantic Search
 
-Uses `Xenova/all-MiniLM-L6-v2` (23MB, fully offline). Each node is embedded as:
-```
-{name} {description} {tags.join(' ')}
-```
+Powered by `Xenova/all-MiniLM-L6-v2` (23 MB, fully offline). Embeddings are computed lazily at first search and cached for the session.
 
-Search uses a **hybrid score**: 70% semantic similarity + 30% keyword overlap.
+Hybrid score formula:
+```
+hybridScore = semanticScore × 0.7 + keywordScore × 0.3
+```
 
 ## Pathfinding
 
-Dijkstra algorithm on the directed graph. Edge cost = `1 - weight`. Lower weight edges (like `prerequisite` with weight 1.0) have cost 0, so they are preferred paths.
+Dijkstra’s algorithm with edge cost `= 1 − weight`. High-weight edges (prerequisites) are cheaper to traverse, so the algorithm naturally follows the intended install order.
 
-## Cross-Branch Synergies
+## Commands
 
-Defined in `src/graph/graphEnricher.ts`. Example:
-- `ai-rag-pipeline` ⇔ `decodo` (Web + AI: scraping → RAG context)
-- `comms-notifier` ⇔ `multiversx-nft-monitor` (NFT alert → instant notification)
-- `trust-oracle` ⇔ `clawhub-publisher` (Publish safely after full audit)
+```
+/graph show                 — full Mermaid flowchart → reports/skill-graph.md
+/graph search <query>       — semantic + keyword hybrid search
+/graph path <slug>          — shortest path from any installed skill to target
+/graph subgraph <slug>      — BFS depth-2 neighbourhood
+/graph recommend <query>    — top 5 semantic recommendations + path
+```
+
+## Output files
+
+| File | Contents |
+|---|---|
+| `skill-graph.json` | Full graph (no embeddings) |
+| `reports/skill-graph.md` | Mermaid diagram |
+| `reports/*.md` | Ad-hoc subgraph / path renders |
