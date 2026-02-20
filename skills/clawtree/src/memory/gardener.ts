@@ -2,17 +2,18 @@ import type { TalentTree } from "../tree/skillTree";
 import { flushToMemory, restoreFromMemory } from "./memoryFlush";
 import { appendDetail, usageFrequency } from "./detailLayer";
 import { loadSummary } from "./summaryIndex";
+import { autoRecommend } from "../tree/recommender";
 
 /**
- * Gardener — orchestrates ClawTree memory.
+ * Gardener — orchestrates ClawTree memory persistence.
  *
  * Two-layer memory architecture:
- *   Summary Layer  → MEMORY.md  (always loaded at startup, lean)
- *   Detail Layer   → memory/YYYY-MM-DD.md  (lazy-loaded on demand)
+ *   Summary Layer  → MEMORY.md              (loaded at every session start, lean)
+ *   Detail Layer   → memory/YYYY-MM-DD.md   (lazy-loaded on demand)
  *
- * Integrated with OpenClaw native lifecycle:
- *   onSessionStart  → boot() restores tree from MEMORY.md
- *   onMemoryFlush   → flush() writes state before context compaction
+ * OpenClaw native lifecycle hooks:
+ *   onSessionStart  → boot()  — restores tree state from MEMORY.md
+ *   onMemoryFlush   → flush() — writes state before context compaction
  */
 export class Gardener {
   private actionCount = 0;
@@ -20,29 +21,29 @@ export class Gardener {
 
   constructor(private readonly baseDir: string) {}
 
-  /** Call at session start. Restores tree from MEMORY.md if available. */
+  /** Restore tree from MEMORY.md on session start. */
   boot(tree: TalentTree): void {
     this.restored = restoreFromMemory(tree, this.baseDir);
 
     if (this.restored) {
       const s = loadSummary(this.baseDir)!;
       console.log(
-        `[GARDENER] ✓ Tree restored from MEMORY.md\n` +
-        `  📦 Installed : ${s.installed.join(", ") || "none"}\n` +
-        `  🔓 Available : ${s.available.join(", ") || "none"}\n` +
-        `  ⚡ Evolving  : ${s.evolving.join(", ")  || "none"}\n` +
-        `  🎯 Total XP  : ${s.totalXP}\n` +
-        `  💾 Last save : ${s.lastSaved}`
+        `[GARDENER] \u2713 Tree restored from MEMORY.md\n` +
+        `  \u{1F4E6} Installed : ${s.installed.join(", ") || "none"}\n` +
+        `  \u{1F513} Available : ${s.available.join(", ") || "none"}\n` +
+        `  \u26A1 Evolving  : ${s.evolving.join(", ")  || "none"}\n` +
+        `  \u{1F3AF} Total XP  : ${s.totalXP}\n` +
+        `  \u{1F4BE} Last save : ${s.lastSaved}`
       );
     } else {
-      console.log("[GARDENER] 🌱 First run — initialising MEMORY.md");
+      console.log("[GARDENER] \u{1F331} First run \u2014 initialising MEMORY.md");
       this.flush(tree);
     }
   }
 
   /**
    * Log a skill event to today's detail layer.
-   * Auto-flushes MEMORY.md every 10 actions.
+   * Auto-flushes MEMORY.md every 10 actions as a safety net.
    */
   logEvent(
     tree:     TalentTree,
@@ -51,46 +52,58 @@ export class Gardener {
     detail?:  string,
     xpDelta?: number
   ): void {
-    appendDetail(this.baseDir, { ts: new Date().toISOString(), event, slug, detail, xpDelta });
+    appendDetail(this.baseDir, {
+      ts: new Date().toISOString(), event, slug, detail, xpDelta,
+    });
     this.actionCount++;
     if (this.actionCount % 10 === 0) this.flush(tree);
   }
 
-  /** Flush tree state to MEMORY.md (also called by OpenClaw onMemoryFlush). */
+  /** Flush tree state to MEMORY.md. Also called by OpenClaw onMemoryFlush hook. */
   flush(tree: TalentTree): void {
     flushToMemory(tree, this.baseDir);
-    console.log("[GARDENER] 💾 Flush → MEMORY.md updated");
+    console.log("[GARDENER] \u{1F4BE} Flush \u2192 MEMORY.md updated");
   }
 
-  /** Return recommendations enriched with 30-day usage history boost. */
+  /**
+   * Return rule-based recommendations enriched with 30-day usage history.
+   * Signature matches the call in TreeManager: (tree, recentSlugs)
+   */
   enrichedRecommendations(
-    baseRecs: Array<{ slug: string; urgency: string; reason: string; branch: string }>,
-    _tree:    TalentTree
+    tree:        TalentTree,
+    recentSlugs: string[]
   ) {
-    const freqMap = usageFrequency(this.baseDir, 30);
+    const baseRecs = autoRecommend(tree, recentSlugs);
+    const freqMap  = usageFrequency(this.baseDir, 30);
+
     return baseRecs
       .map((rec) => {
         const freq = freqMap[rec.slug] ?? 0;
         if (freq >= 5 && rec.urgency === "future") {
-          return { ...rec, urgency: "soon", reason: `${rec.reason} *(used ${freq}× in last 30 days)*` };
+          return {
+            ...rec,
+            urgency: "soon" as const,
+            reason:  `${rec.reason} *(used ${freq}\u00D7 in last 30 days)*`,
+          };
         }
         return rec;
       })
-      .sort((a, b) => (["now", "soon", "future"].indexOf(a.urgency)) - (["now", "soon", "future"].indexOf(b.urgency)));
+      .sort((a, b) => {
+        const order = { now: 0, soon: 1, future: 2 };
+        return order[a.urgency] - order[b.urgency];
+      });
   }
 
-  /** Print stats from memory history. */
-  stats(): void {
-    const summary = loadSummary(this.baseDir);
-    const freq    = usageFrequency(this.baseDir, 30);
+  /** Usage statistics from memory history. */
+  getStats(baseDir: string) {
+    const summary = loadSummary(baseDir);
+    const freq    = usageFrequency(baseDir, 30);
     const top5    = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 5);
-
-    console.log(
-      `\n[GARDENER] 📊 Stats\n` +
-      `  Total XP  : ${summary?.totalXP ?? 0}\n` +
-      `  Installed : ${summary?.installed.length ?? 0}\n` +
-      `  Last save : ${summary?.lastSaved ?? "never"}\n` +
-      `  Top used  :\n${top5.map(([s, n]) => `    - ${s}: ${n}×`).join("\n") || "    (no history yet)"}`
-    );
+    return {
+      totalXP:   summary?.totalXP  ?? 0,
+      installed: summary?.installed.length ?? 0,
+      lastSaved: summary?.lastSaved ?? "never",
+      topUsed:   top5,
+    };
   }
 }
