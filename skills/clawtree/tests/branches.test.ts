@@ -21,7 +21,7 @@ const validBranch: CustomBranchDef = {
 beforeEach(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "clawtree-branches-"));
 });
-aftterEach(() => {
+afterEach(() => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
@@ -51,7 +51,6 @@ describe("validateBranchDef", () => {
 
 describe("mergeCustomBranches", () => {
   it("adds new branch from config.json", () => {
-    // Write config.json with custom_branches
     fs.writeFileSync(
       path.join(tmpDir, "config.json"),
       JSON.stringify({ custom_branches: [validBranch] }),
@@ -92,11 +91,10 @@ describe("mergeCustomBranches", () => {
       "utf8"
     );
     mergeCustomBranches(tree, tmpDir);
-    // binance-api already existed with xp:500 — must NOT be reset
     const node = tree.branches["crypto-trading"]!.nodes.find((n) => n.slug === "binance-api");
     expect(node!.xp).toBe(500);
     expect(node!.status).toBe("evolved");
-    // New node dex-aggregator was added
+    // dex-aggregator a fost adaugat ca nod nou
     expect(tree.branches["crypto-trading"]!.nodes).toHaveLength(2);
   });
 });

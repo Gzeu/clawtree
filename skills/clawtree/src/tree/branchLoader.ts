@@ -13,12 +13,12 @@
 import fs   from "fs";
 import path from "path";
 import type { TalentTree, Branch, SkillNode, SkillStatus } from "./skillTree";
-import type { CustomBranchDef, CustomNodeDef }            from "./configLoader";
-import { loadConfig, validateBranchDef }                   from "./configLoader";
+import type { CustomBranchDef, CustomNodeDef }             from "./configLoader";
+import { loadConfig, saveConfig, validateBranchDef }       from "./configLoader";
 
 const BRANCHES_DIR = "branches";
 
-// ── Public API ─────────────────────────────────────────────────────────────
+// ── Public API ────────────────────────────────────────────────────────────
 
 /**
  * Merge all custom branch definitions into `tree`.
@@ -62,9 +62,11 @@ export function addCustomBranch(
   if (errors.length) return errors;
 
   // Persist to config.json
-  const { loadConfig, saveConfig } = require("./configLoader");
   const cfg = loadConfig(baseDir);
-  cfg.custom_branches = [...(cfg.custom_branches ?? []).filter((b: CustomBranchDef) => b.name !== def.name), def];
+  cfg.custom_branches = [
+    ...(cfg.custom_branches ?? []).filter((b) => b.name !== def.name),
+    def,
+  ];
   saveConfig(baseDir, cfg);
 
   // Merge into live tree
@@ -92,9 +94,8 @@ export function removeCustomBranch(
   }
 
   // Remove from config.json
-  const { loadConfig, saveConfig } = require("./configLoader");
   const cfg = loadConfig(baseDir);
-  cfg.custom_branches = (cfg.custom_branches ?? []).filter((b: CustomBranchDef) => b.name !== branchName);
+  cfg.custom_branches = (cfg.custom_branches ?? []).filter((b) => b.name !== branchName);
   saveConfig(baseDir, cfg);
 
   // Remove any branches/<branchName>.json file
@@ -109,12 +110,12 @@ export function removeCustomBranch(
   return { ok: true };
 }
 
-/** List all custom branch names (excludes built-in). */
+/** List all custom branch names defined in config + branches/ folder. */
 export function listCustomBranches(baseDir: string): CustomBranchDef[] {
   return collectDefs(baseDir);
 }
 
-// ── Internals ───────────────────────────────────────────────────────────────
+// ── Internals ────────────────────────────────────────────────────────────
 
 function collectDefs(baseDir: string): CustomBranchDef[] {
   const results: CustomBranchDef[] = [];
@@ -123,16 +124,15 @@ function collectDefs(baseDir: string): CustomBranchDef[] {
   const cfg = loadConfig(baseDir);
   if (cfg.custom_branches?.length) results.push(...cfg.custom_branches);
 
-  // Source 2: branches/*.json files
+  // Source 2: branches/*.json files (win over config.json on duplicate name)
   const branchesDir = path.resolve(baseDir, BRANCHES_DIR);
   if (fs.existsSync(branchesDir)) {
     const files = fs.readdirSync(branchesDir).filter((f) => f.endsWith(".json"));
     for (const file of files) {
       try {
-        const raw = JSON.parse(fs.readFileSync(path.join(branchesDir, file), "utf8"));
-        // Deduplicate: file wins over config.json entry with same name
+        const raw = JSON.parse(fs.readFileSync(path.join(branchesDir, file), "utf8")) as CustomBranchDef;
         const idx = results.findIndex((r) => r.name === raw.name);
-        if (idx >= 0) results[idx] = raw;
+        if (idx >= 0) results[idx] = raw; // file wins
         else results.push(raw);
       } catch {
         console.warn(`[CLAWTREE] ⚠️  Could not parse branches/${file}`);
@@ -171,6 +171,6 @@ function mergeNodes(branch: Branch, newNodes: CustomNodeDef[]): void {
   for (const nd of newNodes) {
     const exists = branch.nodes.find((n) => n.slug === nd.slug);
     if (!exists) branch.nodes.push(nodeFromDef(nd));
-    // If node exists, keep persisted XP/status — do NOT overwrite
+    // If node already exists, keep persisted XP/status — do NOT overwrite
   }
 }

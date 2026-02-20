@@ -10,20 +10,19 @@
 
 import fs   from "fs";
 import path from "path";
-import type { SkillNode, Branch } from "./skillTree";
 
 // ── Types ───────────────────────────────────────────────────────────────
 
 export interface CustomNodeDef {
-  slug:          string;
-  name:          string;
-  description:   string;
-  tier?:         number;        // default: 1
-  status?:       "available" | "locked"; // default: "available"
-  evolveAt?:     number;        // default: 10
+  slug:           string;
+  name:           string;
+  description:    string;
+  tier?:          number;        // default: 1
+  status?:        "available" | "locked"; // default: "available"
+  evolveAt?:      number;        // default: 10
   prerequisites?: string[];
-  unlocks?:      string[];
-  chainsWith?:   string[];
+  unlocks?:       string[];
+  chainsWith?:    string[];
 }
 
 export interface CustomBranchDef {

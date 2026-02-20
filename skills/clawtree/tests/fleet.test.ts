@@ -7,10 +7,9 @@ let tmpDir: string;
 
 beforeEach(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "clawtree-fleet-"));
-  // Point the fleet registry to our temp dir by env override
   process.env.HOME = tmpDir;
 });
-aftterEach(() => {
+afterEach(() => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
   delete process.env.HOME;
 });
