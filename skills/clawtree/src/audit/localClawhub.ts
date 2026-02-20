@@ -33,7 +33,7 @@ export async function runInception(
   baseDir: string,
   context: { log: (msg: string) => void }
 ): Promise<InceptionResult> {
-  context.log(`\n[CLAWTREE] \u{1F50D} Inception: "${query}"\n`);
+  context.log(`\n[CLAWTREE] 🔍 Inception: "${query}"\n`);
 
   // ── Phase 1: installed skills ───────────────────────────────────────────────
   const installedSlugs: string[] = [];
@@ -44,7 +44,7 @@ export async function runInception(
       }
     }
   }
-  context.log(`  \u2705 Installed (${installedSlugs.length}): ${installedSlugs.join(", ") || "none"}`);
+  context.log(`  ✅ Installed (${installedSlugs.length}): ${installedSlugs.join(", ") || "none"}`);
 
   // ── Phase 2: search ClawHub ─────────────────────────────────────────────────
   const clawhubResults = searchClawhub(query, context);
@@ -54,22 +54,20 @@ export async function runInception(
     .filter((r) => !installedSlugs.includes(r.slug))
     .map((r) => r.slug);
 
-  context.log(`  \u{1F50D} Gaps identified (${gaps.length}): ${gaps.slice(0, 5).join(", ") || "none"}`);
+  context.log(`  🔍 Gaps identified (${gaps.length}): ${gaps.slice(0, 5).join(", ") || "none"}`);
 
   const variants = buildVariants(query, clawhubResults, installedSlugs);
 
-  context.log("\n  \u{1F3AF} Top 3 variants:\n");
+  context.log("\n  🎯 Top 3 variants:\n");
   for (const v of variants) {
-    context.log(`  ${v.rank}. [${v.source}] \`${v.slug}\` \u2014 ${v.description}`);
-    if (v.install) context.log(`     \u2514\u2500 ${v.install}`);
+    context.log(`  ${v.rank}. [${v.source}] \`${v.slug}\` — ${v.description}`);
+    if (v.install) context.log(`     └─ ${v.install}`);
   }
 
   return { query, installed: installedSlugs, gaps, variants };
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────────
-
-const EXEC_OPTS = { timeout: 15_000, stdio: ["pipe", "pipe", "pipe"] } as const;
 
 function searchClawhub(
   query:   string,
@@ -79,9 +77,9 @@ function searchClawhub(
 
   // ─ Attempt A: --json flag (clawhub ≥ 2.x) ────────────────────────────────
   try {
-    const raw    = execSync(`npx clawhub@latest search "${q}" --json`, EXEC_OPTS).toString();
+    const raw    = execSync(`npx clawhub@latest search "${q}" --json`, { timeout: 15_000, encoding: "utf-8" });
     const parsed = JSON.parse(raw) as Record<string, unknown>[];
-    context.log("  \u{1F4E6} ClawHub: results via --json");
+    context.log("  📦 ClawHub: results via --json");
     return parsed.slice(0, 10).map((item, i) => ({
       rank:        i + 1,
       slug:        String(item["slug"] ?? slugify(String(item["name"] ?? q))),
@@ -94,16 +92,16 @@ function searchClawhub(
 
   // ─ Attempt B: plain text output ───────────────────────────────────────
   try {
-    const raw     = execSync(`npx clawhub@latest search "${q}"`, EXEC_OPTS).toString();
+    const raw     = execSync(`npx clawhub@latest search "${q}"`, { timeout: 15_000, encoding: "utf-8" });
     const results = parseTextOutput(raw);
     if (results.length > 0) {
-      context.log(`  \u{1F4E6} ClawHub: ${results.length} result(s) via text parser`);
+      context.log(`  📦 ClawHub: ${results.length} result(s) via text parser`);
       return results;
     }
   } catch { /* CLI not installed or errored */ }
 
   // ─ Fallback: local tree data only ─────────────────────────────────────
-  context.log("  \u26A0\uFE0F  clawhub CLI not available \u2014 using local tree data only");
+  context.log("  ⚠️  clawhub CLI not available — using local tree data only");
   return [];
 }
 
@@ -173,7 +171,7 @@ function buildVariants(
       slug:        proposedSlug,
       name:        `${query} Skill`,
       source:      "proposed" as const,
-      description: `Custom skill for "${query}" \u2014 create with \`clawhub create ${proposedSlug}\``,
+      description: `Custom skill for "${query}" — create with \`clawhub create ${proposedSlug}\``,
       install:     `clawhub create ${proposedSlug}`,
       score:       0,
     });
