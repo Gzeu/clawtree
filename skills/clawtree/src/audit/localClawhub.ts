@@ -2,10 +2,10 @@ import { execSync } from "child_process";
 import type { TalentTree } from "../tree/skillTree";
 
 export interface InceptionResult {
-  query:    string;
+  query:     string;
   installed: string[];
-  gaps:     string[];
-  variants: InceptionVariant[];
+  gaps:      string[];
+  variants:  InceptionVariant[];
 }
 
 export interface InceptionVariant {
@@ -14,15 +14,18 @@ export interface InceptionVariant {
   name:        string;
   source:      "clawhub" | "local" | "proposed";
   description: string;
-  install?:    string; // CLI command to install
+  install?:    string;
 }
 
 /**
  * runInception — Audit installed skills, analyse gaps, propose 3 variants.
  *
- * Phase 1: list locally installed skills (clawhub list)
- * Phase 2: search ClawHub for query-relevant skills (clawhub search)
- * Phase 3: compare → gap analysis → rank top 3 variants
+ * Phase 1: list locally installed skills from the talent tree
+ * Phase 2: search ClawHub for query-relevant skills
+ *   └─ Attempt A: `clawhub search <q> --json`  (clawhub ≥ 2.x)
+ *   └─ Attempt B: `clawhub search <q>`         (plain text, parsed)
+ *   └─ Fallback:  local tree data only
+ * Phase 3: gap analysis → rank top 3 variants
  */
 export async function runInception(
   query:   string,
@@ -32,7 +35,7 @@ export async function runInception(
 ): Promise<InceptionResult> {
   context.log(`\n[CLAWTREE] \u{1F50D} Inception: "${query}"\n`);
 
-  // ── Phase 1: installed skills from talent tree ──────────────────────────
+  // ── Phase 1: installed skills ───────────────────────────────────────────────
   const installedSlugs: string[] = [];
   for (const branch of Object.values(tree.branches)) {
     for (const node of branch.nodes) {
@@ -43,10 +46,10 @@ export async function runInception(
   }
   context.log(`  \u2705 Installed (${installedSlugs.length}): ${installedSlugs.join(", ") || "none"}`);
 
-  // ── Phase 2: search ClawHub for relevant skills ─────────────────────────
+  // ── Phase 2: search ClawHub ─────────────────────────────────────────────────
   const clawhubResults = searchClawhub(query, context);
 
-  // ── Phase 3: gap analysis → 3 variants ─────────────────────────────
+  // ── Phase 3: gap analysis → 3 variants ───────────────────────────────────────────
   const gaps = clawhubResults
     .filter((r) => !installedSlugs.includes(r.slug))
     .map((r) => r.slug);
@@ -64,37 +67,93 @@ export async function runInception(
   return { query, installed: installedSlugs, gaps, variants };
 }
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
+// ── Helpers ─────────────────────────────────────────────────────────────────────
+
+const EXEC_OPTS = { timeout: 15_000, stdio: ["pipe", "pipe", "pipe"] } as const;
 
 function searchClawhub(
   query:   string,
   context: { log: (msg: string) => void }
 ): InceptionVariant[] {
+  const q = query.replace(/"/g, "\\\""); // escape quotes for shell
+
+  // ─ Attempt A: --json flag (clawhub ≥ 2.x) ────────────────────────────────
   try {
-    const raw    = execSync(`npx clawhub@latest search "${query}" --json`, { timeout: 15_000 }).toString();
-    const parsed = JSON.parse(raw) as any[];
+    const raw    = execSync(`npx clawhub@latest search "${q}" --json`, EXEC_OPTS).toString();
+    const parsed = JSON.parse(raw) as Record<string, unknown>[];
+    context.log("  \u{1F4E6} ClawHub: results via --json");
     return parsed.slice(0, 10).map((item, i) => ({
       rank:        i + 1,
-      slug:        item.slug ?? item.name?.toLowerCase().replace(/\s+/g, "-"),
-      name:        item.name ?? item.slug,
+      slug:        String(item["slug"] ?? slugify(String(item["name"] ?? q))),
+      name:        String(item["name"] ?? item["slug"] ?? q),
       source:      "clawhub" as const,
-      description: item.description ?? "",
-      install:     `clawhub install ${item.slug}`,
+      description: String(item["description"] ?? ""),
+      install:     `clawhub install ${item["slug"]}`,
     }));
-  } catch {
-    context.log("  \u26A0\uFE0F  clawhub CLI not available — using local tree data only");
-    return [];
+  } catch { /* CLI doesn't support --json, try plain text */ }
+
+  // ─ Attempt B: plain text output ───────────────────────────────────────
+  try {
+    const raw     = execSync(`npx clawhub@latest search "${q}"`, EXEC_OPTS).toString();
+    const results = parseTextOutput(raw);
+    if (results.length > 0) {
+      context.log(`  \u{1F4E6} ClawHub: ${results.length} result(s) via text parser`);
+      return results;
+    }
+  } catch { /* CLI not installed or errored */ }
+
+  // ─ Fallback: local tree data only ─────────────────────────────────────
+  context.log("  \u26A0\uFE0F  clawhub CLI not available \u2014 using local tree data only");
+  return [];
+}
+
+/**
+ * Parse plain-text clawhub search output.
+ * Handles common formats:
+ *   • "slug - description"
+ *   • "slug  description"
+ *   • table rows with | separators
+ */
+function parseTextOutput(raw: string): InceptionVariant[] {
+  const results: InceptionVariant[] = [];
+
+  for (const line of raw.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#") || trimmed.startsWith("-") ||
+        trimmed.startsWith("Name") || trimmed.startsWith("Slug") || /^[\u2500-\u257F|+]/.test(trimmed)) {
+      continue; // skip headers, separators, decorators
+    }
+
+    // Format: "slug - description" or "slug  description" or "| slug | description |"
+    const clean    = trimmed.replace(/^\|/, "").replace(/\|$/, "").trim();
+    const parts    = clean.split(/\s{2,}|\s-\s|\|/).map((p) => p.trim()).filter(Boolean);
+    const rawSlug  = parts[0] ?? "";
+    const slug     = slugify(rawSlug);
+
+    if (!slug || slug.length < 2) continue;
+
+    results.push({
+      rank:        results.length + 1,
+      slug,
+      name:        rawSlug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+      source:      "clawhub" as const,
+      description: parts.slice(1).join(" ").slice(0, 120) || `Skill: ${slug}`,
+      install:     `clawhub install ${slug}`,
+    });
+
+    if (results.length >= 10) break;
   }
+
+  return results;
 }
 
 function buildVariants(
-  query:      string,
-  results:    InceptionVariant[],
-  installed:  string[]
+  query:     string,
+  results:   InceptionVariant[],
+  installed: string[]
 ): InceptionVariant[] {
   const keywords = query.toLowerCase().split(/\s+/);
 
-  // Score by keyword overlap in slug + description
   const scored = results.map((r) => {
     const text  = `${r.slug} ${r.description}`.toLowerCase();
     const score = keywords.filter((k) => text.includes(k)).length;
@@ -106,9 +165,9 @@ function buildVariants(
     .sort((a, b) => b.score - a.score)
     .slice(0, 3);
 
-  // If fewer than 3, pad with a "propose new" entry
-  if (top.length < 3) {
-    const proposedSlug = query.toLowerCase().replace(/\s+/g, "-") + "-skill";
+  // Pad to 3 with a "proposed" entry if needed
+  while (top.length < 3) {
+    const proposedSlug = `${slugify(query)}-skill`;
     top.push({
       rank:        top.length + 1,
       slug:        proposedSlug,
@@ -121,4 +180,8 @@ function buildVariants(
   }
 
   return top.slice(0, 3).map((v, i) => ({ ...v, rank: i + 1 }));
+}
+
+function slugify(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
