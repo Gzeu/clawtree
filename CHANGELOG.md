@@ -9,7 +9,38 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Planned
 - Fleet Web UI (dashboard for multi-agent view)
-- User-defined branches via `config.json`
+
+---
+
+## [1.1.0] — 2026-02-20
+
+### Added — User-Defined Branches
+
+**New modules**
+- `src/tree/configLoader.ts` — `ClawTreeConfig` type, `loadConfig`, `saveConfig`, `validateBranchDef`
+- `src/tree/branchLoader.ts` — `mergeCustomBranches`, `addCustomBranch`, `removeCustomBranch`, `listCustomBranches`
+
+**TreeManager updates**
+- Merges custom branches at boot (from `config.json#custom_branches` + `branches/*.json`)
+- New methods: `addBranch(def)`, `removeBranch(name)`, `listBranches()`
+- XP and status of existing nodes are **never overwritten** during merge
+
+**New commands**
+- `/tree branch list` — list all user-defined branches
+- `/tree branch add <json>` — add a branch inline
+- `/tree branch remove <name>` — remove a custom branch (built-in branches are protected)
+
+**Merge priority** (last wins for duplicate names):
+1. Built-in `defaultTree()`
+2. `config.json#custom_branches`
+3. `branches/*.json` files
+
+**Tests**
+- `tests/branches.test.ts` — 8 tests: validateBranchDef, mergeCustomBranches, XP preservation, removeCustomBranch, built-in protection
+
+**Docs**
+- `docs/custom-branches.md` — Method A/B/C guide, node fields reference, fleet compatibility
+- `config.example.json` — updated with `custom_branches` example
 
 ---
 
@@ -42,7 +73,7 @@ Initial open-source release. Full V1 + V2 + V3 implemented.
 
 ---
 
-### V1 + V2 — Core (also in this release)
+### V1 + V2 — Core
 
 **Talent Tree (V1)**
 - Full TalentTree type system: 8 branches, 32 skill nodes
@@ -64,8 +95,8 @@ Initial open-source release. Full V1 + V2 + V3 implemented.
 **Inception Engine**
 - Full audit + gap analysis + 3 variants (ClawHub CLI + propose fallback)
 
-**Tests (8 suites total)**
-- tree, pathfinder, safety, memory, recommender, integration, fleet, slots
+**Tests (9 suites total)**
+- tree, pathfinder, safety, memory, recommender, integration, fleet, slots, branches
 
 **CI / GitHub**
 - `.github/workflows/ci.yml` — test + lint + build on push/PR

@@ -24,14 +24,14 @@ Audit → Gap Analysis → Talent Tree → Knowledge Graph → Evolve
 `clawtree` is a **meta-skill** for the OpenClaw ecosystem: it manages, recommends, and evolves your skill collection using a talent-tree model, a semantic knowledge graph, and a persistent Gardener memory layer that survives across agent restarts.
 
 ```
-/inception "web scraping"   → full audit + gap analysis + 3 install variants
-/tree show                  → ASCII talent tree with live XP bars
-/tree install <slug>        → install with XP tracking + auto-unlock
-/graph search "monitoring"  → semantic search (offline, no API key)
-/graph path <slug>          → shortest path to any skill (Dijkstra)
-/fleet sync                 → merge all agent trees into shared fleet tree
-/slots add * on_evolve flush_memory  → auto-flush on every evolution
-/remember                   → flush memory before context compaction
+/inception "web scraping"              → full audit + gap analysis + 3 install variants
+/tree show                             → ASCII talent tree with live XP bars
+/tree branch add {"name":"crypto",...} → add your own custom branch
+/graph search "monitoring"             → semantic search (offline, no API key)
+/graph path <slug>                     → shortest path to any skill (Dijkstra)
+/fleet sync                            → merge all agent trees into shared fleet tree
+/slots add * on_evolve flush_memory    → auto-flush on every evolution
+/remember                              → flush memory before context compaction
 ```
 
 ---
@@ -55,24 +55,25 @@ cp -r clawtree/skills/clawtree ~/path/to/your/openclaw/skills/
 
 ```
 clawtree/
-├── 🔍 Inception Engine    audit + gap + 3 variants automatically
-├── 🌳 Talent Tree         DAG of skills with XP + auto-evolution
-│   ├── AUTO mode           agent recommends and installs at threshold
-│   ├── MANUAL mode         full user control
-│   └── HYBRID mode         auto-recommend, manual approve (default)
-├── 🧠 Knowledge Graph     semantic search + Dijkstra pathfinding
-│   ├── Xenova/all-MiniLM   offline embeddings, 23 MB, no API key
-│   └── Mermaid renderer    flowchart auto-generated in reports/
-├── 💾 Gardener Memory     XP survives restarts via MEMORY.md
-│   ├── Summary Layer       MEMORY.md — always loaded at session start
-│   └── Detail Layer        memory/YYYY-MM-DD.md — lazy daily logs
-├── 🌍 Fleet Tree (V3)     multi-agent shared talent tree
-│   ├── fleetRegistry       register/list agents globally
-│   ├── sharedTree          ~/.clawtree/fleet-tree.json (max-wins merge)
-│   └── fleetSync           push/pull between personal and fleet
-└── 🔧 Conditional Slots (V3)  event-driven rule engine
-    ├── Triggers            on_use | on_install | on_evolve | on_chain | *
-    └── Actions             notify | auto_install | unlock_branch | flush | emit
+├── 🔍 Inception Engine       audit + gap + 3 variants automatically
+├── 🌳 Talent Tree            DAG of skills with XP + auto-evolution
+│   ├── AUTO mode              agent recommends and installs at threshold
+│   ├── MANUAL mode            full user control
+│   ├── HYBRID mode            auto-recommend, manual approve (default)
+│   └── Custom branches        via config.json or branches/*.json
+├── 🧠 Knowledge Graph        semantic search + Dijkstra pathfinding
+│   ├── Xenova/all-MiniLM      offline embeddings, 23 MB, no API key
+│   └── Mermaid renderer       flowchart auto-generated in reports/
+├── 💾 Gardener Memory        XP survives restarts via MEMORY.md
+│   ├── Summary Layer          MEMORY.md — always loaded at session start
+│   └── Detail Layer           memory/YYYY-MM-DD.md — lazy daily logs
+├── 🌍 Fleet Tree (V3)        multi-agent shared talent tree
+│   ├── fleetRegistry          register/list agents globally
+│   ├── sharedTree             ~/.clawtree/fleet-tree.json (max-wins merge)
+│   └── fleetSync              push/pull between personal and fleet
+└── 🔧 Conditional Slots (V3) event-driven rule engine
+    ├── Triggers               on_use | on_install | on_evolve | on_chain | *
+    └── Actions                notify | auto_install | unlock_branch | flush | emit
 ```
 
 ---
@@ -81,26 +82,31 @@ clawtree/
 
 ```
 skills/clawtree/
-├── index.ts                     command router
-├── skill.json                   ClawHub manifest (triggers + lifecycle)
-├── SKILL.md                     OpenClaw manifest
-├── config.example.json          default config
+├── index.ts                        command router
+├── skill.json                      ClawHub manifest (triggers + lifecycle)
+├── SKILL.md                        OpenClaw manifest
+├── config.example.json             default config + custom_branches example
 ├── src/
-│   ├── tree/       (6 files)    SkillTree, Manager, Evolver, Recommender, Renderer, Persistence
-│   ├── memory/     (4 files)    Gardener, SummaryIndex, DetailLayer, MemoryFlush
-│   ├── graph/      (6 files)    KnowledgeGraph, SemanticSearch, Pathfinder, Mermaid, Persistence, Enricher
-│   ├── safety/     (2 files)    PermissionsGate, InjectionHeuristics
-│   ├── audit/      (1 file)     localClawhub (Inception Engine)
-│   ├── fleet/      (4 files)    FleetRegistry, SharedTree, FleetSync, GardenerAgent
-│   └── slots/      (3 files)    ConditionalSlots, SlotEngine, SlotPersistence
-├── tests/          (8 suites)   tree, pathfinder, safety, memory, recommender, integration, fleet, slots
+│   ├── tree/       (8 files)       SkillTree, Manager, Evolver, Recommender,
+│   │                              Renderer, Persistence, ConfigLoader, BranchLoader
+│   ├── memory/     (4 files)       Gardener, SummaryIndex, DetailLayer, MemoryFlush
+│   ├── graph/      (6 files)       KnowledgeGraph, SemanticSearch, Pathfinder,
+│   │                              Mermaid, Persistence, Enricher
+│   ├── safety/     (2 files)       PermissionsGate, InjectionHeuristics
+│   ├── audit/      (1 file)        localClawhub (Inception Engine)
+│   ├── fleet/      (4 files)       FleetRegistry, SharedTree, FleetSync, GardenerAgent
+│   └── slots/      (3 files)       ConditionalSlots, SlotEngine, SlotPersistence
+├── tests/          (9 suites)      tree, pathfinder, safety, memory, recommender,
+│                                  integration, fleet, slots, branches
+├── branches/       (optional)      drop custom branch .json files here
 └── docs/
-    ├── architecture.md          full system architecture
-    ├── talent-tree.md           branch reference, XP rules, modes
-    ├── knowledge-graph.md       edge types, semantic search, pathfinding
-    ├── memory.md                Gardener two-layer memory system
-    ├── fleet.md                 Fleet Tree: multi-agent shared tree
-    └── slots.md                 Conditional Slots: event-driven rules
+    ├── architecture.md             full system architecture
+    ├── talent-tree.md              branch reference, XP rules, modes
+    ├── knowledge-graph.md          edge types, semantic search, pathfinding
+    ├── memory.md                   Gardener two-layer memory system
+    ├── fleet.md                    Fleet Tree: multi-agent shared tree
+    ├── slots.md                    Conditional Slots: event-driven rules
+    └── custom-branches.md          User-defined branches guide
 ```
 
 ---
@@ -115,6 +121,9 @@ skills/clawtree/
 | `/tree install <slug>` | Install a skill with XP tracking |
 | `/tree mode auto\|manual\|hybrid` | Change management mode |
 | `/tree evolve <slug>` | Force evolution check |
+| `/tree branch list` | List all custom branches |
+| `/tree branch add <json>` | Add a user-defined branch |
+| `/tree branch remove <name>` | Remove a custom branch |
 | `/graph show` | Mermaid flowchart → `reports/skill-graph.md` |
 | `/graph search <query>` | Hybrid semantic + keyword search |
 | `/graph path <slug>` | Shortest path to a skill (Dijkstra) |
@@ -148,6 +157,29 @@ skills/clawtree/
 | 📊 Data & Analytics | csv-processor → data-pipeline → analytics → insight-oracle | `skill-clawhub` |
 | ⚙️ DevOps & Infra | tautulli → rlm-controller → ci-guardian | `skill-clawhub` |
 | 📡 Comms | notifier → router → comms-oracle | `skill-clawhub` |
+| ✨ Custom | *(your branches)* | `config.json` or `branches/*.json` |
+
+---
+
+## Custom Branches
+
+Extend the talent tree without touching core code. Add a `custom_branches` key to your `config.json`:
+
+```json
+{
+  "custom_branches": [
+    {
+      "name":  "crypto-trading",
+      "label": "💹 Crypto Trading",
+      "nodes": [
+        { "slug": "binance-api", "name": "Binance API", "description": "Real-time spot data", "tier": 1 }
+      ]
+    }
+  ]
+}
+```
+
+Or drop a `.json` file in `branches/`. See [`docs/custom-branches.md`](skills/clawtree/docs/custom-branches.md) for the full guide.
 
 ---
 
@@ -182,6 +214,7 @@ Your XP state is automatically restored at session start and saved before contex
 - [`docs/memory.md`](skills/clawtree/docs/memory.md) — Gardener two-layer memory
 - [`docs/fleet.md`](skills/clawtree/docs/fleet.md) — Fleet Tree: multi-agent shared tree
 - [`docs/slots.md`](skills/clawtree/docs/slots.md) — Conditional Slots: event-driven rules
+- [`docs/custom-branches.md`](skills/clawtree/docs/custom-branches.md) — User-defined branches guide
 - [`CHANGELOG.md`](CHANGELOG.md) — full release notes
 
 ---
@@ -200,7 +233,7 @@ After your first contribution, we’ll add you to the contributors list. ❤️
 - [x] V2 — Knowledge Graph (semantic search + Dijkstra + Mermaid)
 - [x] V3 — Fleet Tree (multi-agent shared tree + Conditional Slots)
 - [x] ClawHub publish automation via CI
-- [ ] User-defined branches via `config.json`
+- [x] User-defined branches via `config.json`
 - [ ] Fleet Web UI (dashboard for multi-agent view)
 
 ---
