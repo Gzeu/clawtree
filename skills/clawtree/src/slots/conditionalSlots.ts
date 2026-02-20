@@ -21,9 +21,9 @@ export type SlotAction =
   | "emit_event";
 
 export interface SlotEvent {
-  type:    SlotTrigger;
-  slug:    string;
-  ts:      string;  // ISO 8601
+  type:     SlotTrigger;
+  slug:     string;
+  ts:       string;   // ISO 8601
   xpDelta?: number;
 }
 
@@ -45,6 +45,25 @@ export function shouldFire(slot: ConditionalSlot, event: SlotEvent): boolean {
   const triggerMatch = slot.trigger === "*" || slot.trigger === event.type;
   const slugMatch    = slot.slug    === "*" || slot.slug    === event.slug;
   return triggerMatch && slugMatch;
+}
+
+/**
+ * Returns the default slot set loaded on first boot (no slots.json).
+ * One sensible default: auto-flush Gardener memory after every evolution.
+ */
+export function createDefaultSlots(): ConditionalSlot[] {
+  const ts = new Date().toISOString();
+  return [
+    {
+      id:         "default-flush-on-evolve",
+      slug:       "*",
+      trigger:    "on_evolve",
+      action:     "flush_memory",
+      enabled:    true,
+      fireCount:  0,
+      createdAt:  ts,
+    },
+  ];
 }
 
 /**
@@ -77,7 +96,11 @@ export function removeSlot(slots: ConditionalSlot[], id: string): ConditionalSlo
   return slots.filter((s) => s.id !== id);
 }
 
-/** Toggle a slot's enabled state. */
-export function toggleSlot(slots: ConditionalSlot[], id: string, enabled: boolean): ConditionalSlot[] {
+/** Toggle a slot’s enabled state. */
+export function toggleSlot(
+  slots:   ConditionalSlot[],
+  id:      string,
+  enabled: boolean
+): ConditionalSlot[] {
   return slots.map((s) => s.id === id ? { ...s, enabled } : s);
 }

@@ -1,7 +1,7 @@
 import fs   from "fs";
 import path from "path";
-import type { TalentTree } from "../tree/skillTree";
-import { getFleetDir }    from "./fleetRegistry";
+import type { TalentTree, SkillNode } from "../tree/skillTree";
+import { getFleetDir }               from "./fleetRegistry";
 
 const sharedFile = () => path.join(getFleetDir(), "fleet-tree.json");
 
@@ -33,15 +33,28 @@ const STATUS_RANK: Record<string, number> = {
  * Never downgrades any node.
  */
 export function mergeIntoFleet(agentTree: TalentTree): TalentTree {
-  const fleet = loadSharedTree() ?? JSON.parse(JSON.stringify(agentTree));
+  const fleet = loadSharedTree() ?? JSON.parse(JSON.stringify(agentTree)) as TalentTree;
 
   for (const [key, branch] of Object.entries(agentTree.branches)) {
-    if (!fleet.branches[key]) { fleet.branches[key] = branch; continue; }
+    if (!fleet.branches[key]) {
+      fleet.branches[key] = branch;
+      continue;
+    }
+
+    // Extract into local const so TS narrows correctly after the guard above
+    const fleetBranch = fleet.branches[key]!;
 
     for (const node of branch.nodes) {
-      const fn = fleet.branches[key].nodes.find((n) => n.slug === node.slug);
-      if (!fn) { fleet.branches[key].nodes.push({ ...node }); continue; }
+      const fn: SkillNode | undefined = fleetBranch.nodes.find(
+        (n: SkillNode) => n.slug === node.slug
+      );
 
+      if (!fn) {
+        fleetBranch.nodes.push({ ...node });
+        continue;
+      }
+
+      fn.xp         = Math.max(fn.xp,         node.xp);
       fn.usageCount = Math.max(fn.usageCount, node.usageCount);
       if ((STATUS_RANK[node.status] ?? 0) > (STATUS_RANK[fn.status] ?? 0)) {
         fn.status = node.status;
@@ -49,8 +62,8 @@ export function mergeIntoFleet(agentTree: TalentTree): TalentTree {
     }
   }
 
-  fleet.totalXP    = Math.max(fleet.totalXP, agentTree.totalXP);
-  fleet.lastSaved  = new Date().toISOString().slice(0, 10);
+  fleet.totalXP   = Math.max(fleet.totalXP, agentTree.totalXP);
+  (fleet as any).lastSaved = new Date().toISOString().slice(0, 10);
   saveSharedTree(fleet);
   return fleet;
 }
