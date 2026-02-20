@@ -1,0 +1,24 @@
+{
+  "name": "ClawTree",
+  "slug": "clawtree",
+  "version": "1.0.0",
+  "description": "Talent tree + knowledge graph for OpenClaw skills — audit, gap analysis, semantic search, evolve.",
+  "author": "Gzeu",
+  "homepage": "https://github.com/Gzeu/clawtree",
+  "license": "MIT",
+  "permissions": ["filesystem", "network", "shell"],
+  "entrypoint": "index.ts",
+  "tags": [
+    "talent-tree",
+    "knowledge-graph",
+    "skill-management",
+    "semantic-search",
+    "meta-skill",
+    "openclaw",
+    "clawhub"
+  ],
+  "requires": {
+    "node": ">=20.0.0",
+    "bins": ["clawhub"]
+  }
+}

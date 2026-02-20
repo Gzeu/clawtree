@@ -1,0 +1,37 @@
+{
+  "name": "clawtree",
+  "version": "1.0.0",
+  "description": "Talent tree + knowledge graph for OpenClaw skills",
+  "keywords": ["openclaw", "clawhub", "openclaw-skill", "talent-tree", "knowledge-graph", "ai-agent"],
+  "author": "Gzeu",
+  "license": "MIT",
+  "homepage": "https://github.com/Gzeu/clawtree",
+  "repository": { "type": "git", "url": "https://github.com/Gzeu/clawtree.git" },
+  "bugs": { "url": "https://github.com/Gzeu/clawtree/issues" },
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest --coverage",
+    "lint": "eslint src/ --ext .ts",
+    "dev": "ts-node index.ts"
+  },
+  "dependencies": {
+    "@xenova/transformers": "^3.0.0",
+    "@nexeth/mermaid": "^0.0.18"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0",
+    "jest": "^29.0.0",
+    "ts-jest": "^29.0.0",
+    "@types/jest": "^29.0.0",
+    "eslint": "^8.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "testMatch": ["**/tests/**/*.test.ts"]
+  }
+}

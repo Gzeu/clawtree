@@ -1,0 +1,11 @@
+{
+  "mode": "hybrid",
+  "memory_flush_enabled": true,
+  "semantic_search_model": "Xenova/all-MiniLM-L6-v2",
+  "xp_per_use": 10,
+  "chain_bonus_xp": 25,
+  "auto_flush_interval": 10,
+  "graph_bfs_depth": 2,
+  "recommend_top_k": 5,
+  "history_days": 30
+}
