@@ -1,6 +1,6 @@
 {
   "name": "clawtree",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Talent tree + knowledge graph for OpenClaw skills",
   "keywords": ["openclaw", "clawhub", "openclaw-skill", "talent-tree", "knowledge-graph", "ai-agent"],
   "author": "Gzeu",
@@ -16,7 +16,7 @@
     "dev": "ts-node index.ts"
   },
   "dependencies": {
-    "@xenova/transformers": "^3.0.0",
+    "@huggingface/transformers": "^3.3.3",
     "@nexeth/mermaid": "^0.0.18"
   },
   "devDependencies": {

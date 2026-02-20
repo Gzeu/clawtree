@@ -1,22 +1,24 @@
-import { loadTree, saveTree }  from "./persistence";
+import { loadTree, saveTree }   from "./persistence";
 import { addXP, chainBonus, evolveCheck, findNode } from "./evolver";
-import { autoRecommend }       from "./recommender";
-import { renderASCIITree }     from "./renderer";
-import { Gardener }            from "../memory/gardener";
+import { autoRecommend }        from "./recommender";
+import { renderASCIITree }      from "./renderer";
+import { Gardener }             from "../memory/gardener";
 import { mergeCustomBranches, addCustomBranch, removeCustomBranch, listCustomBranches } from "./branchLoader";
-import { loadConfig }          from "./configLoader";
+import { loadConfig }           from "./configLoader";
+import { processEvent }         from "../slots/slotEngine";
 import type { TalentTree, TreeMode } from "./skillTree";
-import type { CustomBranchDef }      from "./configLoader";
+import type { CustomBranchDef, ClawTreeConfig } from "./configLoader";
 
 export class TreeManager {
   private tree:        TalentTree;
   private recentSlugs: string[] = [];
   private gardener:    Gardener;
+  private cfg:         ClawTreeConfig;
 
   constructor(private baseDir: string) {
+    this.cfg      = loadConfig(baseDir);
     this.tree     = loadTree(baseDir);
-    // Merge user-defined branches at boot
-    const added = mergeCustomBranches(this.tree, baseDir);
+    const added   = mergeCustomBranches(this.tree, baseDir);
     if (added > 0) console.log(`[CLAWTREE] 🌳 Loaded ${added} custom branch(es) from config`);
     this.gardener = new Gardener(baseDir);
     this.gardener.boot(this.tree);
@@ -35,27 +37,42 @@ export class TreeManager {
     }
     node.status = "installed";
     this.gardener.logEvent(this.tree, "install", slug);
+    // 🔧 Fire on_install slots
+    processEvent({ type: "on_install", slug, ts: new Date().toISOString() }, this.tree, this.baseDir);
     console.log(`[CLAWTREE] ✅ Installed: ${slug}`);
     this.flush();
   }
 
   onSkillUsed(slug: string, chainedWith?: string): void {
     this.recentSlugs.push(slug);
-    const event = addXP(this.tree, slug, 10);
+    const xpPerUse = this.cfg.xp_per_use ?? 10;
+    const event    = addXP(this.tree, slug, xpPerUse);
+
     if (event) {
       console.log(event.message);
       this.gardener.logEvent(this.tree, "evolve", slug,
         `T${event.fromTier}→T${event.toTier} unlocked:${event.unlocked.join(",")}`, 100);
+      // 🔧 Fire on_evolve slots
+      processEvent({ type: "on_evolve", slug, ts: new Date().toISOString(), xpDelta: 100 }, this.tree, this.baseDir);
     }
+
     if (chainedWith) {
-      const bonus = chainBonus(this.tree, slug, chainedWith);
+      const chainBonusXP = this.cfg.chain_bonus_xp ?? 25;
+      const bonus        = chainBonus(this.tree, slug, chainedWith, chainBonusXP);
       if (bonus > 0) {
         addXP(this.tree, slug, bonus);
         this.gardener.logEvent(this.tree, "chain", slug, `→${chainedWith}`, bonus);
+        // 🔧 Fire on_chain slots
+        processEvent({ type: "on_chain", slug, ts: new Date().toISOString(), xpDelta: bonus }, this.tree, this.baseDir);
       }
     }
-    this.gardener.logEvent(this.tree, "use", slug, undefined, 10);
-    if (this.recentSlugs.length % 10 === 0) this.flush();
+
+    // 🔧 Fire on_use slots
+    processEvent({ type: "on_use", slug, ts: new Date().toISOString(), xpDelta: xpPerUse }, this.tree, this.baseDir);
+    this.gardener.logEvent(this.tree, "use", slug, undefined, xpPerUse);
+
+    const flushEvery = this.cfg.auto_flush_interval ?? 10;
+    if (this.recentSlugs.length % flushEvery === 0) this.flush();
     if ((this.tree.mode === "auto" || this.tree.mode === "hybrid") && this.recentSlugs.length % 5 === 0) {
       this.printRecommendations();
     }
@@ -64,8 +81,14 @@ export class TreeManager {
 
   forceEvolve(slug: string): void {
     const event = evolveCheck(this.tree, slug);
-    if (event) { console.log(event.message); this.flush(); }
-    else console.log(`[CLAWTREE] ℹ️ ${slug} not ready for evolution yet.`);
+    if (event) {
+      console.log(event.message);
+      // 🔧 Fire on_evolve slots
+      processEvent({ type: "on_evolve", slug, ts: new Date().toISOString() }, this.tree, this.baseDir);
+      this.flush();
+    } else {
+      console.log(`[CLAWTREE] ℹ️ ${slug} not ready for evolution yet.`);
+    }
   }
 
   setMode(mode: TreeMode): void {
@@ -79,22 +102,26 @@ export class TreeManager {
   }
 
   printRecommendations(): void {
-    const recs = this.gardener.enrichedRecommendations(this.tree, this.recentSlugs);
+    const topK = this.cfg.recommend_top_k ?? 5;
+    const recs  = this.gardener.enrichedRecommendations(this.tree, this.recentSlugs);
     if (!recs.length) { console.log("[CLAWTREE] ✓ No new recommendations."); return; }
     console.log("\n🌳 ClawTree — Recommendations (+ history boost):\n");
-    for (const r of recs.slice(0, 5)) {
+    for (const r of recs.slice(0, topK)) {
       const badge = { now: "🟢", soon: "🟡", future: "🔵" }[r.urgency];
       console.log(`${badge} [${r.branch}] \`${r.slug}\` — ${r.reason}`);
     }
   }
 
-  flush(): void { this.gardener.flush(this.tree); }
+  flush(): void {
+    this.gardener.flush(this.tree);
+    // 🔧 Fire on_flush slots
+    processEvent({ type: "on_flush", slug: "*", ts: new Date().toISOString() }, this.tree, this.baseDir);
+  }
 
   getStats() { return this.gardener.getStats(this.baseDir); }
 
   // ── Custom branch management ─────────────────────────────────────────────
 
-  /** Add a custom branch from a JSON definition. Returns validation errors or []. */
   addBranch(def: CustomBranchDef): string[] {
     const errors = addCustomBranch(this.tree, this.baseDir, def);
     if (!errors.length) {
@@ -104,17 +131,15 @@ export class TreeManager {
     return errors;
   }
 
-  /** Remove a custom branch by name. */
   removeBranch(name: string): { ok: boolean; reason?: string } {
     const result = removeCustomBranch(this.tree, this.baseDir, name);
     if (result.ok) {
       this.flush();
-      console.log(`[CLAWTREE] 🗑️  Branch '${name}' removed`);
+      console.log(`[CLAWTREE] 🗑️ Branch '${name}' removed`);
     }
     return result;
   }
 
-  /** List all custom branches defined in config. */
   listBranches(): CustomBranchDef[] {
     return listCustomBranches(this.baseDir);
   }

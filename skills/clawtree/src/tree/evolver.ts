@@ -8,7 +8,7 @@ export interface EvolveEvent {
   message:   string;
 }
 
-// Find a node across all branches
+/** Find a node across all branches. */
 export function findNode(tree: TalentTree, slug: string): SkillNode | null {
   for (const branch of Object.values(tree.branches)) {
     const found = branch.nodes.find((n) => n.slug === slug);
@@ -17,23 +17,23 @@ export function findNode(tree: TalentTree, slug: string): SkillNode | null {
   return null;
 }
 
-// Add XP to a node and check for evolution
+/** Add XP to a node and check for evolution. */
 export function addXP(
-  tree:     TalentTree,
-  slug:     string,
-  amount:   number = 10
+  tree:   TalentTree,
+  slug:   string,
+  amount: number = 10
 ): EvolveEvent | null {
   const node = findNode(tree, slug);
   if (!node || !["installed", "evolved"].includes(node.status)) return null;
 
-  node.xp          += amount;
-  node.usageCount  += 1;
-  tree.totalXP     += amount;
+  node.xp         += amount;
+  node.usageCount += 1;
+  tree.totalXP    += amount;
 
   return evolveCheck(tree, slug);
 }
 
-// Check if a node is ready to evolve
+/** Check if a node is ready to evolve (idempotent). */
 export function evolveCheck(tree: TalentTree, slug: string): EvolveEvent | null {
   const node = findNode(tree, slug);
   if (!node) return null;
@@ -42,9 +42,9 @@ export function evolveCheck(tree: TalentTree, slug: string): EvolveEvent | null 
 
   const fromTier = node.tier;
   const toTier   = Math.min(node.tier + 1, 5);
-  node.tier      = toTier;
-  node.status    = toTier >= 5 ? "mastered" : "evolved";
-  node.usageCount = 0;               // reset for next tier
+  node.tier       = toTier;
+  node.status     = toTier >= 5 ? "mastered" : "evolved";
+  node.usageCount = 0;                             // reset for next tier
   node.evolveAt   = Math.round(node.evolveAt * 1.5); // harder next time
 
   // Unlock dependent nodes
@@ -56,7 +56,6 @@ export function evolveCheck(tree: TalentTree, slug: string): EvolveEvent | null 
       unlocked.push(unlock);
     }
   }
-  // Unlock nodes that depend on this one
   for (const branch of Object.values(tree.branches)) {
     for (const n of branch.nodes) {
       if (n.status === "locked" && n.prerequisites.includes(slug)) {
@@ -79,13 +78,22 @@ export function evolveCheck(tree: TalentTree, slug: string): EvolveEvent | null 
   };
 }
 
-export function chainBonus(tree: TalentTree, slugA: string, slugB: string): number {
+/**
+ * Chain bonus XP between two paired skills.
+ * @param bonusAmount - override the default 25 XP (read from config)
+ */
+export function chainBonus(
+  tree:        TalentTree,
+  slugA:       string,
+  slugB:       string,
+  bonusAmount: number = 25
+): number {
   const a = findNode(tree, slugA);
   if (!a) return 0;
-  return a.chainsWith.includes(slugB) ? 25 : 0;
+  return a.chainsWith.includes(slugB) ? bonusAmount : 0;
 }
 
-function arePrereqsMet(tree: TalentTree, node: SkillNode): boolean {
+export function arePrereqsMet(tree: TalentTree, node: SkillNode): boolean {
   return node.prerequisites.every((p) => {
     const dep = findNode(tree, p);
     return dep && ["installed", "evolved", "mastered"].includes(dep.status);
