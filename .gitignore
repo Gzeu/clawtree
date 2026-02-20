@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.js.map
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# OpenClaw runtime (auto-generated)
+skills/clawtree/talent-tree.json
+skills/clawtree/MEMORY.md
+skills/clawtree/memory/
+skills/clawtree/reports/
+skills/clawtree/skill-graph.json
+skills/clawtree/.clawhub/
+
+# Test coverage
+coverage/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
