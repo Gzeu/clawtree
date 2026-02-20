@@ -1,8 +1,8 @@
 {
   "name": "ClawTree",
   "slug": "clawtree",
-  "version": "1.0.0",
-  "description": "Talent tree + knowledge graph for OpenClaw skills \u2014 audit, gap analysis, semantic search, evolve.",
+  "version": "1.1.0",
+  "description": "Talent tree + knowledge graph for OpenClaw skills \u2014 audit, gap analysis, semantic search, evolve, custom branches.",
   "author": "Gzeu",
   "homepage": "https://github.com/Gzeu/clawtree",
   "license": "MIT",
@@ -10,7 +10,8 @@
   "entrypoint": "index.ts",
   "tags": [
     "talent-tree", "knowledge-graph", "skill-management",
-    "semantic-search", "meta-skill", "openclaw", "clawhub"
+    "semantic-search", "meta-skill", "openclaw", "clawhub",
+    "fleet", "conditional-slots", "custom-branches"
   ],
   "requires": {
     "node": ">=20.0.0",
@@ -20,14 +21,19 @@
     "keywords": [
       "/inception", "/tree", "/graph",
       "/remember", "/gardener",
+      "/fleet", "/slots",
       "what skills", "which skill", "install skill",
-      "skill gap", "talent tree", "knowledge graph"
+      "skill gap", "talent tree", "knowledge graph",
+      "custom branch", "fleet sync", "conditional slot"
     ],
     "patterns": [
       "/inception .+",
-      "/tree (show|recommend|install|evolve|mode)",
+      "/tree (show|recommend|install|evolve|mode|branch)",
+      "/tree branch (list|add|remove)",
       "/graph (show|search|path|subgraph|recommend)",
       "/gardener (stats|flush)",
+      "/fleet (status|sync|pull|push|register|unregister|list)",
+      "/slots (list|add|remove|fire)",
       "/remember"
     ]
   },
